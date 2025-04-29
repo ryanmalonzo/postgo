@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:17.4
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - "db_data:/var/lib/postgresql/data"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER-postgo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD-postgo}
+      POSTGRES_DB: ${POSTGRES_DB-postgo}
+    restart: unless-stopped
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  db_data:
