@@ -1,10 +1,10 @@
 package functions
 
 import (
-    "database/sql"
-    "fmt"
+	"database/sql"
+	"fmt"
 
-    _ "github.com/lib/pq"
+	_ "github.com/lib/pq"
 )
 
 // CreateDatabase creates a new PostgreSQL database if it doesn't already exist.
