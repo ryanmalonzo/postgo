@@ -8,6 +8,14 @@ import (
 )
 
 func main() {
+	// Create the database first
+	err := functions.CreateDatabase("localhost", 5432, "postgo", "postgo", "postgo")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Database created or already exists!")
+
+	// Then connect to the database
 	db, err := functions.Connect("localhost", 5432, "postgo", "postgo", "postgo")
 	if err != nil {
 		panic(err)
