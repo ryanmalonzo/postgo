@@ -24,4 +24,11 @@ func main() {
 		panic(err)
 	}
 	logging.Info.Println("Table users created successfully!")
+
+	// Test
+	userMetadata, err := db.GetMetadata(examples.User{})
+	if err != nil {
+		panic(err)
+	}
+	logging.Info.Println("User metadata:", userMetadata)
 }
