@@ -26,9 +26,37 @@ func (c *Connection) CreateTable(tableName string, schema interface{}) error {
 		return fmt.Errorf("schema must be a struct type or pointer to struct, got %v", t.Kind())
 	}
 
-	for i := range t.NumField() {
+	// Process all fields, including embedded structs and their fields, if any (such as BaseModel)
+	if err := processFields(t, "", &columns); err != nil {
+		return err
+	}
+
+	columnsStr := strings.Join(columns, ", ")
+
+	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s)", tableName, columnsStr)
+	_, err := c.db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to create table: %w", err)
+	}
+	return nil
+}
+
+func processFields(t reflect.Type, prefix string, columns *[]string) error {
+	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
+
+		// If field is an embedded struct, process its fields recursively
+		if field.Anonymous && field.Type.Kind() == reflect.Struct {
+			if err := processFields(field.Type, prefix, columns); err != nil {
+				return err
+			}
+			continue
+		}
+
 		colName := field.Name
+		if prefix != "" {
+			colName = prefix + colName
+		}
 
 		var colType string
 		switch field.Type.Kind() {
@@ -44,15 +72,7 @@ func (c *Connection) CreateTable(tableName string, schema interface{}) error {
 			return fmt.Errorf("unsupported column type: %s", field.Type.Name())
 		}
 
-		columns = append(columns, fmt.Sprintf("%s %s", colName, colType))
-	}
-
-	columnsStr := strings.Join(columns, ", ")
-
-	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s)", tableName, columnsStr)
-	_, err := c.db.Exec(query)
-	if err != nil {
-		return fmt.Errorf("failed to create table: %w", err)
+		*columns = append(*columns, fmt.Sprintf("%s %s", colName, colType))
 	}
 	return nil
 }
