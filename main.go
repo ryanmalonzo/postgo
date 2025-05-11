@@ -19,16 +19,9 @@ func main() {
 	defer conn.Close()
 
 	// Create a table with a schema
-	err = conn.CreateTable("users", examples.User{})
+	err = conn.CreateTable(&examples.User{})
 	if err != nil {
 		panic(err)
 	}
 	logging.Info.Println("Table users created successfully!")
-
-	// Test
-	userMetadata, err := db.GetMetadata(examples.User{})
-	if err != nil {
-		panic(err)
-	}
-	logging.Info.Println("User metadata:", userMetadata)
 }
