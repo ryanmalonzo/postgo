@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"postgo/db"
 	"postgo/examples"
+	"postgo/logging"
 
 	_ "github.com/lib/pq"
 )
@@ -14,6 +14,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	logging.Info.Println("Connected to the database successfully!")
 
 	defer conn.Close()
 
@@ -22,6 +23,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println("Connected to the database successfully!")
+	logging.Info.Println("Table users created successfully!")
 }
