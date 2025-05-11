@@ -1,34 +1,35 @@
-package functions
+package db
 
 import (
-	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
 
-	_ "github.com/lib/pq" // PostgreSQL driver
+	_ "github.com/lib/pq"
 )
 
-func CreateTable(db *sql.DB, tableName string, schema interface{}) error {
+// CreateTable creates a new table in the database based on the provided schema.
+// The schema should be a struct type that defines the table columns.
+func (c *Connection) CreateTable(tableName string, schema interface{}) error {
 	var columns []string
-	
+
 	// Use reflection to get struct fields and types
 	t := reflect.TypeOf(schema)
-	
-	// If pointer, get the element type
+
+	// If pointer, get the underlying element
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-	
+
 	// Ensure we're dealing with a struct
 	if t.Kind() != reflect.Struct {
 		return fmt.Errorf("schema must be a struct type or pointer to struct, got %v", t.Kind())
 	}
-	
+
 	for i := range t.NumField() {
 		field := t.Field(i)
 		colName := field.Name
-		
+
 		var colType string
 		switch field.Type.Kind() {
 		case reflect.String:
@@ -42,16 +43,14 @@ func CreateTable(db *sql.DB, tableName string, schema interface{}) error {
 		default:
 			return fmt.Errorf("unsupported column type: %s", field.Type.Name())
 		}
-		
+
 		columns = append(columns, fmt.Sprintf("%s %s", colName, colType))
 	}
-	
-	// Join the column definitions into a comma-separated string
+
 	columnsStr := strings.Join(columns, ", ")
 
-	// Create a table with the specified name
 	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s)", tableName, columnsStr)
-	_, err := db.Exec(query)
+	_, err := c.db.Exec(query)
 	if err != nil {
 		return fmt.Errorf("failed to create table: %w", err)
 	}
