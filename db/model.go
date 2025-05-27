@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Model defines the interface that models must implement to provide their table name
+// Base interface to be implemented by all models
 type Model interface {
 	TableName() string
 }
@@ -47,7 +47,7 @@ func GetMetadata(model any) (*ModelMetadata, error) {
 	}, nil
 }
 
-// tag =  `db:"primary_key,auto_increment"` for example
+// tag = `db:"primary_key,auto_increment"` for example
 func parseConstraints(tag string) []string {
 	constraints := []string{}
 	if tag == "" {
@@ -65,7 +65,7 @@ func parseConstraints(tag string) []string {
 	return constraints
 }
 
-// extractFields recursively extracts fields from a struct type, handling embedded structs
+// Recursively extract and store fields from a struct type
 func extractFields(t reflect.Type, fields *[]Field) error {
 	for i := range t.NumField() {
 		field := t.Field(i)

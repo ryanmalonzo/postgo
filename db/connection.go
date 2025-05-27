@@ -11,9 +11,8 @@ type Connection struct {
 	db *sql.DB
 }
 
-// NewConnection creates a new database connection using individual connection parameters
+// Initialize a new database connection
 func NewConnection(host string, port int, user, password, dbname string) (*Connection, error) {
-	// Construct the connection string
 	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 

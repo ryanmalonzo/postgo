@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// CreateTable creates a new table in the database based on the provided model.
+// Create a new table in the database based on the provided model.
 // The model must implement the Model interface to provide its table name.
 func (c *Connection) CreateTable(model Model) error {
 	// Get table name directly from the Model interface
@@ -70,12 +70,12 @@ func buildColumnDefinition(field Field) string {
 		switch constraint {
 		case "primary_key":
 			definition += " PRIMARY KEY"
-		case "auto_increment":
-			// Already handled in the type
 		case "not_null":
 			definition += " NOT NULL"
 		case "unique":
 			definition += " UNIQUE"
+		case "auto_increment":
+			// Already handled in the type
 		default:
 			// For custom constraints, add them directly
 			if !strings.Contains(definition, constraint) {
