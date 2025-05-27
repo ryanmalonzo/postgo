@@ -4,15 +4,11 @@ import (
 	"postgo/db"
 )
 
-// User représente un utilisateur dans le système.
-// Cette structure utilise l'embedding de BaseModel pour hériter
-// automatiquement du champ ID avec ses contraintes (primary_key, auto_increment).
-// Les tags `db` définissent les contraintes SQL pour chaque champ.
 type User struct {
-	db.BaseModel                    // Héritage du modèle de base (ID, etc.)
-	Name     string `db:"not_null"` // Nom obligatoire
-	Email    string `db:"not_null,unique"` // Email obligatoire et unique
-	Password string `db:"not_null"` // Mot de passe obligatoire
+	db.BaseModel
+	Name     string `db:"not_null"`
+	Email    string `db:"not_null,unique"`
+	Password string `db:"not_null"`
 }
 
 // TableName retourne le nom de la table pour ce modèle.
