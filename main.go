@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	// Connect to the database
+	// Connexion à la base de données
 	conn, err := db.NewConnection("localhost", 5432, "postgo", "postgo", "postgo")
 	if err != nil {
 		panic(err)
@@ -18,7 +18,9 @@ func main() {
 
 	defer conn.Close()
 
-	// Create a table with a schema
+	// Création d'une table avec un schéma basé sur le modèle User
+	// Cette opération utilise la réflexion pour analyser la structure du modèle
+	// et générer automatiquement le SQL de création de table
 	err = conn.CreateTable(&examples.User{})
 	if err != nil {
 		panic(err)

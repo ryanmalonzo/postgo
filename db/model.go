@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Base interface to be implemented by all models
+// Interface de base à implémenter par tous les modèles
 type Model interface {
 	TableName() string
 }
@@ -26,8 +26,12 @@ type ModelMetadata struct {
 	Fields    []Field
 }
 
+// GetMetadata extrait les métadonnées d'un modèle en utilisant la réflexion
+// pour analyser sa structure et ses tags. Cette fonction examine la structure
+// d'un type Go et retourne les informations nécessaires pour créer une table SQL.
 func GetMetadata(model any) (*ModelMetadata, error) {
 	t := reflect.TypeOf(model)
+	// Si c'est un pointeur, on récupère le type sous-jacent
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
@@ -37,6 +41,7 @@ func GetMetadata(model any) (*ModelMetadata, error) {
 	}
 
 	var fields []Field
+	// Extraction récursive des champs du struct
 	if err := extractFields(t, &fields); err != nil {
 		return nil, err
 	}
@@ -47,7 +52,8 @@ func GetMetadata(model any) (*ModelMetadata, error) {
 	}, nil
 }
 
-// tag = `db:"primary_key,auto_increment"` for example
+// parseConstraints analyse les tags `db` pour extraire les contraintes SQL
+// Exemple: `db:"primary_key,auto_increment"` devient ["primary_key", "auto_increment"]
 func parseConstraints(tag string) []string {
 	constraints := []string{}
 	if tag == "" {
@@ -65,17 +71,22 @@ func parseConstraints(tag string) []string {
 	return constraints
 }
 
-// Recursively extract and store fields from a struct type
+// extractFields parcourt récursivement les champs d'un struct en utilisant la réflexion.
+// Cette fonction gère les structs imbriqués (comme BaseModel) et extrait les informations
+// de type et les contraintes de chaque champ pour construire le schéma de la table.
 func extractFields(t reflect.Type, fields *[]Field) error {
+	// Parcours de tous les champs du struct
 	for i := range t.NumField() {
 		field := t.Field(i)
 		fieldType := field.Type
 
+		// Déréférencement des pointeurs pour obtenir le type réel
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
 		}
 
-		// Handle embedded structs recursively (such as BaseModel)
+		// Gestion des structs imbriqués (embedded structs) comme BaseModel
+		// Les champs anonymes sont traités récursivement
 		if field.Anonymous && fieldType.Kind() == reflect.Struct {
 			if err := extractFields(fieldType, fields); err != nil {
 				return err
@@ -83,6 +94,7 @@ func extractFields(t reflect.Type, fields *[]Field) error {
 			continue
 		}
 
+		// Extraction des contraintes depuis le tag `db`
 		constraints := parseConstraints(field.Tag.Get("db"))
 
 		*fields = append(*fields, Field{

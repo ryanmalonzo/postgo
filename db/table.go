@@ -10,19 +10,21 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Create a new table in the database based on the provided model.
-// The model must implement the Model interface to provide its table name.
+// CreateTable crée une nouvelle table dans la base de données basée sur le modèle fourni.
+// Le modèle doit implémenter l'interface Model pour fournir le nom de sa table.
+// Cette fonction utilise la réflexion pour analyser la structure du modèle et
+// générer automatiquement le schéma SQL correspondant.
 func (c *Connection) CreateTable(model Model) error {
-	// Get table name directly from the Model interface
+	// Récupération du nom de table depuis l'interface Model
 	tableName := model.TableName()
 
-	// Get model metadata using reflection
+	// Extraction des métadonnées du modèle via réflexion
 	metadata, err := GetMetadata(model)
 	if err != nil {
 		return fmt.Errorf("failed to get model metadata: %w", err)
 	}
 
-	// Build column definitions with constraints
+	// Construction des définitions de colonnes avec leurs contraintes
 	var columns []string
 	for _, field := range metadata.Fields {
 		colDef := buildColumnDefinition(field)
@@ -39,18 +41,20 @@ func (c *Connection) CreateTable(model Model) error {
 	return nil
 }
 
-// buildColumnDefinition creates a SQL column definition string including constraints
+// buildColumnDefinition construit une définition de colonne SQL complète avec ses contraintes.
+// Cette fonction mappe les types Go vers les types SQL PostgreSQL et applique
+// les contraintes définies dans les tags du struct.
 func buildColumnDefinition(field Field) string {
 	var colType string
 	isAutoIncrement := slices.Contains(field.Constraints, "auto_increment")
 
-	// Map Go types to SQL types
+	// Mapping des types Go vers les types SQL PostgreSQL
 	switch field.Type.Kind() {
 	case reflect.String:
 		colType = "VARCHAR(255)"
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if isAutoIncrement {
-			colType = "SERIAL"
+			colType = "SERIAL" // Type PostgreSQL pour auto-incrémentation
 		} else {
 			colType = "INTEGER"
 		}
@@ -62,10 +66,10 @@ func buildColumnDefinition(field Field) string {
 		panic(fmt.Sprintf("unsupported field type: %s", field.Type))
 	}
 
-	// Escape column name with double quotes
+	// Échappement du nom de colonne avec des guillemets doubles
 	definition := fmt.Sprintf("\"%s\" %s", field.Name, colType)
 
-	// Add constraints (except auto_increment which is handled via the data type)
+	// Ajout des contraintes (sauf auto_increment qui est géré par le type de données)
 	for _, constraint := range field.Constraints {
 		switch constraint {
 		case "primary_key":
@@ -75,9 +79,9 @@ func buildColumnDefinition(field Field) string {
 		case "unique":
 			definition += " UNIQUE"
 		case "auto_increment":
-			// Already handled in the type
+			// Déjà géré dans le type de données (SERIAL)
 		default:
-			// For custom constraints, add them directly
+			// Pour les contraintes personnalisées, les ajouter directement
 			if !strings.Contains(definition, constraint) {
 				definition += " " + strings.ToUpper(constraint)
 			}

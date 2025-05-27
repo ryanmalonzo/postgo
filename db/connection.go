@@ -11,8 +11,11 @@ type Connection struct {
 	db *sql.DB
 }
 
-// Initialize a new database connection
+// NewConnection initialise une nouvelle connexion à la base de données PostgreSQL.
+// Cette fonction construit la chaîne de connexion et teste la connectivité
+// avant de retourner l'instance de Connection.
 func NewConnection(host string, port int, user, password, dbname string) (*Connection, error) {
+	// Construction de la chaîne de connexion PostgreSQL
 	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 
@@ -21,7 +24,7 @@ func NewConnection(host string, port int, user, password, dbname string) (*Conne
 		return nil, err
 	}
 
-	// Test the connection
+	// Test de la connexion pour s'assurer qu'elle fonctionne
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
@@ -29,7 +32,7 @@ func NewConnection(host string, port int, user, password, dbname string) (*Conne
 	return &Connection{db: db}, nil
 }
 
-// Close closes the database connection
+// Close ferme la connexion à la base de données
 func (c *Connection) Close() error {
 	return c.db.Close()
 }

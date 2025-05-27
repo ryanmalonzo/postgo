@@ -6,9 +6,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Create a new PostgreSQL database using a Connection instance
+// CreateDatabase crée une nouvelle base de données PostgreSQL en utilisant une instance Connection.
+// Cette fonction vérifie d'abord si la base de données existe déjà avant de la créer
+// pour éviter les erreurs de duplication.
 func (c *Connection) CreateDatabase(dbname string) error {
-	// Check if the database already exists
+	// Vérification si la base de données existe déjà
 	var exists bool
 	query := `SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)`
 	err := c.db.QueryRow(query, dbname).Scan(&exists)
@@ -16,7 +18,7 @@ func (c *Connection) CreateDatabase(dbname string) error {
 		return fmt.Errorf("failed to check if database exists: %w", err)
 	}
 
-	// If the database doesn't exist, create it
+	// Si la base de données n'existe pas, la créer
 	if !exists {
 		createQuery := fmt.Sprintf("CREATE DATABASE %s", dbname)
 		_, err = c.db.Exec(createQuery)
