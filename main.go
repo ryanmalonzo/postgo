@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"postgo/db"
 	"postgo/examples"
 	"postgo/logging"
@@ -9,6 +10,20 @@ import (
 )
 
 func main() {
+	var demo = flag.String("demo", "", "Demo to run: 'builder', 'full', or leave empty for basic")
+	flag.Parse()
+
+	switch *demo {
+	case "builder":
+		runExampleBuilder()
+	case "full":
+		runDemo()
+	default:
+		runBasicDemo()
+	}
+}
+
+func runBasicDemo() {
 	// Connexion à la base de données
 	conn, err := db.NewConnection("localhost", 5432, "postgo", "postgo", "postgo")
 	if err != nil {
@@ -18,10 +33,10 @@ func main() {
 
 	defer conn.Close()
 
-	// Création d'une table avec un schéma basé sur le modèle User
-	// Cette opération utilise la réflexion pour analyser la structure du modèle
-	// et générer automatiquement le SQL de création de table
-	err = conn.CreateTable(&examples.User{})
+	// Création d'une table avec le builder pattern
+	// La table est définie explicitement avec ses attributs et contraintes
+	userTable := examples.CreateUserTable()
+	err = conn.CreateTable(userTable)
 	if err != nil {
 		panic(err)
 	}

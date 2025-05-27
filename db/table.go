@@ -2,91 +2,119 @@ package db
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
-
-	"slices"
 
 	_ "github.com/lib/pq"
 )
 
-// CreateTable crée une nouvelle table dans la base de données basée sur le modèle fourni.
-// Le modèle doit implémenter l'interface Model pour fournir le nom de sa table.
-// Cette fonction utilise la réflexion pour analyser la structure du modèle et
-// générer automatiquement le schéma SQL correspondant.
-func (c *Connection) CreateTable(model Model) error {
-	// Récupération du nom de table depuis l'interface Model
-	tableName := model.TableName()
+// AttributeType représente les types de données supportés
+type AttributeType string
 
-	// Extraction des métadonnées du modèle via réflexion
-	metadata, err := GetMetadata(model)
-	if err != nil {
-		return fmt.Errorf("failed to get model metadata: %w", err)
-	}
+const (
+	String  AttributeType = "VARCHAR(255)"
+	Integer AttributeType = "INTEGER"
+	Float   AttributeType = "FLOAT"
+	Boolean AttributeType = "BOOLEAN"
+)
 
-	// Construction des définitions de colonnes avec leurs contraintes
-	var columns []string
-	for _, field := range metadata.Fields {
-		colDef := buildColumnDefinition(field)
-		columns = append(columns, colDef)
-	}
+// Attribute représente une colonne de table avec ses contraintes
+type Attribute struct {
+	name        string
+	dataType    AttributeType
+	constraints []string
+}
 
-	columnsStr := strings.Join(columns, ", ")
-	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS \"%s\" (%s)", tableName, columnsStr)
+// AttributeBuilder permet de construire un attribut avec le pattern builder
+type AttributeBuilder struct {
+	attribute   *Attribute
+	tableBuilder *TableBuilder // Référence vers le table builder parent
+}
 
-	_, err = c.db.Exec(query)
-	if err != nil {
-		return fmt.Errorf("failed to create table: %w", err)
+// NotNull ajoute la contrainte NOT NULL à l'attribut
+func (ab *AttributeBuilder) NotNull() *AttributeBuilder {
+	ab.attribute.constraints = append(ab.attribute.constraints, "NOT NULL")
+	return ab
+}
+
+// Unique ajoute la contrainte UNIQUE à l'attribut
+func (ab *AttributeBuilder) Unique() *AttributeBuilder {
+	ab.attribute.constraints = append(ab.attribute.constraints, "UNIQUE")
+	return ab
+}
+
+// Build finalise la construction de l'attribut et l'ajoute à la table
+func (ab *AttributeBuilder) Build() *TableBuilder {
+	if ab.tableBuilder != nil {
+		ab.tableBuilder.attributes = append(ab.tableBuilder.attributes, ab.attribute)
+		return ab.tableBuilder
 	}
 	return nil
 }
 
-// buildColumnDefinition construit une définition de colonne SQL complète avec ses contraintes.
-// Cette fonction mappe les types Go vers les types SQL PostgreSQL et applique
-// les contraintes définies dans les tags du struct.
-func buildColumnDefinition(field Field) string {
-	var colType string
-	isAutoIncrement := slices.Contains(field.Constraints, "auto_increment")
+// TableBuilder permet de construire une table avec le pattern builder
+type TableBuilder struct {
+	name       string
+	attributes []*Attribute
+}
 
-	// Mapping des types Go vers les types SQL PostgreSQL
-	switch field.Type.Kind() {
-	case reflect.String:
-		colType = "VARCHAR(255)"
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		if isAutoIncrement {
-			colType = "SERIAL" // Type PostgreSQL pour auto-incrémentation
-		} else {
-			colType = "INTEGER"
-		}
-	case reflect.Float32, reflect.Float64:
-		colType = "FLOAT"
-	case reflect.Bool:
-		colType = "BOOLEAN"
-	default:
-		panic(fmt.Sprintf("unsupported field type: %s", field.Type))
+// NewTable crée un nouveau builder de table avec l'ID auto-incrémenté obligatoire
+func NewTable(name string) *TableBuilder {
+	tb := &TableBuilder{
+		name:       name,
+		attributes: make([]*Attribute, 0),
 	}
-
-	// Échappement du nom de colonne avec des guillemets doubles
-	definition := fmt.Sprintf("\"%s\" %s", field.Name, colType)
-
-	// Ajout des contraintes (sauf auto_increment qui est géré par le type de données)
-	for _, constraint := range field.Constraints {
-		switch constraint {
-		case "primary_key":
-			definition += " PRIMARY KEY"
-		case "not_null":
-			definition += " NOT NULL"
-		case "unique":
-			definition += " UNIQUE"
-		case "auto_increment":
-			// Déjà géré dans le type de données (SERIAL)
-		default:
-			// Pour les contraintes personnalisées, les ajouter directement
-			if !strings.Contains(definition, constraint) {
-				definition += " " + strings.ToUpper(constraint)
-			}
-		}
+	
+	// Ajout automatique de l'ID auto-incrémenté (obligatoire)
+	idAttribute := &Attribute{
+		name:        "id",
+		dataType:    "SERIAL",
+		constraints: []string{"PRIMARY KEY"},
 	}
+	tb.attributes = append(tb.attributes, idAttribute)
+	
+	return tb
+}
 
-	return definition
+// AddAttribute ajoute un attribut à la table avec une syntaxe fluide
+func (tb *TableBuilder) AddAttribute(name string, dataType AttributeType) *AttributeBuilder {
+	attr := &Attribute{
+		name:        name,
+		dataType:    dataType,
+		constraints: make([]string, 0),
+	}
+	
+	return &AttributeBuilder{
+		attribute:    attr,
+		tableBuilder: tb,
+	}
+}
+
+// BuildSQL finalise la construction de la table et retourne la requête SQL
+func (tb *TableBuilder) BuildSQL() string {
+	var columns []string
+	
+	for _, attr := range tb.attributes {
+		definition := fmt.Sprintf("\"%s\" %s", attr.name, attr.dataType)
+		
+		// Ajout des contraintes
+		for _, constraint := range attr.constraints {
+			definition += " " + constraint
+		}
+		
+		columns = append(columns, definition)
+	}
+	
+	columnsStr := strings.Join(columns, ", ")
+	return fmt.Sprintf("CREATE TABLE IF NOT EXISTS \"%s\" (%s)", tb.name, columnsStr)
+}
+
+// CreateTable crée une nouvelle table dans la base de données en utilisant un TableBuilder
+func (c *Connection) CreateTable(tableBuilder *TableBuilder) error {
+	query := tableBuilder.BuildSQL()
+	
+	_, err := c.db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to create table: %w", err)
+	}
+	return nil
 }
