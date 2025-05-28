@@ -117,7 +117,7 @@ func runDemo() {
 	selectQuery := query.NewSelectQuery("users").
 		AddColumn("id").
 		AddColumn("name").
-		AddCondition("id = 1")
+		Where("id = 1")
 
 	rows, err := selectQuery.Execute(conn.GetDatabase())
 	if err != nil {
@@ -140,7 +140,7 @@ func runDemo() {
 
 	updateQuery := query.NewUpdateQuery("users").
 		AddColumn("name").AddValue("John Does").
-		AddCondition("id = 1")
+		Where("id = 1")
 
 	err = updateQuery.Execute(conn.GetDatabase())
 	if err != nil {

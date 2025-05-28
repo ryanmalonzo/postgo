@@ -6,9 +6,9 @@ import (
 )
 
 type SelectQuery struct {
-	table      string
-	columns    []string
-	conditions []string
+	BaseQuery
+	table   string
+	columns []string
 }
 
 func NewSelectQuery(table string) *SelectQuery {
@@ -27,10 +27,31 @@ func (q *SelectQuery) AddCondition(condition string) *SelectQuery {
 	return q
 }
 
+func (q *SelectQuery) Where(condition string) *SelectQuery {
+	q.conditions = append(q.conditions, condition)
+	return q
+}
+
+func (q *SelectQuery) OrderBy(column string, direction string) *SelectQuery {
+	q.orderBy = append(q.orderBy, column+" "+direction)
+	return q
+}
+
+func (q *SelectQuery) Limit(limit int) *SelectQuery {
+	q.limit = &limit
+	return q
+}
+
+func (q *SelectQuery) Offset(offset int) *SelectQuery {
+	q.offset = &offset
+	return q
+}
+
 func (q *SelectQuery) Build() string {
 	query := "SELECT " + strings.Join(q.columns, ", ") + " FROM " + q.table
-	if len(q.conditions) > 0 {
-		query += " WHERE " + strings.Join(q.conditions, " AND ")
+	commonClauses := q.buildCommonClauses()
+	if commonClauses != "" {
+		query += " " + commonClauses
 	}
 	return query
 }

@@ -7,10 +7,10 @@ import (
 )
 
 type UpdateQuery struct {
-	table      string
-	columns    []string
-	conditions []string
-	values     []interface{}
+	BaseQuery
+	table   string
+	columns []string
+	values  []interface{}
 }
 
 func NewUpdateQuery(table string) *UpdateQuery {
@@ -24,27 +24,48 @@ func (q *UpdateQuery) AddColumn(column string) *UpdateQuery {
 	return q
 }
 
-func (q *UpdateQuery) AddCondition(condition string) *UpdateQuery {
-	q.conditions = append(q.conditions, condition)
-	return q
-}
-
 func (q *UpdateQuery) AddValue(value interface{}) *UpdateQuery {
 	q.values = append(q.values, value)
 	return q
 }
 
+func (q *UpdateQuery) Where(condition string) *UpdateQuery {
+	q.conditions = append(q.conditions, condition)
+	return q
+}
+
+func (q *UpdateQuery) OrderBy(column string, direction string) *UpdateQuery {
+	q.orderBy = append(q.orderBy, column+" "+direction)
+	return q
+}
+
+func (q *UpdateQuery) Limit(limit int) *UpdateQuery {
+	q.limit = &limit
+	return q
+}
+
+func (q *UpdateQuery) Offset(offset int) *UpdateQuery {
+	q.offset = &offset
+	return q
+}
+
 func (q *UpdateQuery) Build() string {
-	// Construire les paires colonne=valeur
-	setClauses := make([]string, len(q.columns))
-	for i, col := range q.columns {
-		setClauses[i] = col + " = $" + fmt.Sprintf("%d", i+1)
+	if len(q.columns) != len(q.values) {
+		panic("Number of columns and values must match")
 	}
 
-	query := "UPDATE " + q.table + " SET " + strings.Join(setClauses, ", ")
-	if len(q.conditions) > 0 {
-		query += " WHERE " + strings.Join(q.conditions, " AND ")
+	var setPairs []string
+	for i, column := range q.columns {
+		setPairs = append(setPairs, fmt.Sprintf("%s = $%d", column, i+1))
 	}
+
+	query := fmt.Sprintf("UPDATE %s SET %s", q.table, strings.Join(setPairs, ", "))
+
+	commonClauses := q.buildCommonClauses()
+	if commonClauses != "" {
+		query += " " + commonClauses
+	}
+
 	return query
 }
 
