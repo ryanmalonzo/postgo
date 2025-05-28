@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:17.4
-    container_name: postgres
+    container_name: postgres_postgo
     ports:
       - "5432:5432"
     volumes:
@@ -14,7 +14,7 @@ services:
 
   adminer:
     image: adminer
-    container_name: adminer
+    container_name: adminer_postgo
     ports:
       - "8080:8080"
     restart: unless-stopped

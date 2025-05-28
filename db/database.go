@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 
 	_ "github.com/lib/pq"
@@ -28,4 +29,7 @@ func (c *Connection) CreateDatabase(dbname string) error {
 	}
 
 	return nil
+}
+func (c *Connection) GetDatabase() *sql.DB {
+	return c.db
 }
