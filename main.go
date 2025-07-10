@@ -56,12 +56,10 @@ func runDemo() {
 
 	// Récupération de toutes les tables du schéma
 	allTables := db.GetAllTables()
-	tableNames := db.ListTables()
 
-	for _, tableName := range tableNames {
-		table := allTables[tableName]
-		fmt.Printf("Table %s:\n", tableName)
-		fmt.Printf("%s\n\n", table.BuildSQL())
+	for tableName, table := range allTables {
+			fmt.Printf("Table %s:\n", tableName)
+			fmt.Printf("%s\n\n", table.BuildSQL())
 	}
 
 	// 2. Connexion à la base et création réelle des tables
