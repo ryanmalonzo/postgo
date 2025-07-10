@@ -38,14 +38,12 @@ func runBasicDemo() {
 
 	defer conn.Close()
 
-	// Création d'une table avec le builder pattern
-	// La table est définie explicitement avec ses attributs et contraintes
-	userTable := examples.CreateUserTable()
-	err = conn.CreateTable(userTable)
+	// Initialisation automatique de toutes les tables du schéma
+	err = db.InitAllTables(conn)
 	if err != nil {
 		panic(err)
 	}
-	logging.Info.Println("Table users created successfully!")
+	logging.Info.Println("All schema tables initialized successfully!")
 }
 
 func runDemo() {
@@ -53,22 +51,17 @@ func runDemo() {
 	fmt.Println()
 
 	// 1. Génération du SQL sans connexion à la base
-	fmt.Println("1. Génération du SQL pour différentes tables:")
+	fmt.Println("1. Génération du SQL pour toutes les tables du schéma:")
 	fmt.Println()
 
-	tables := []struct {
-		name    string
-		builder *db.TableBuilder
-	}{
-		{"Users", examples.CreateUserTable()},
-		{"Companies", examples.CreateCompanyTable()},
-		{"Posts", examples.CreatePostTable()},
-		{"Categories", examples.CreateCategoryTable()},
-	}
+	// Récupération de toutes les tables du schéma
+	allTables := db.GetAllTables()
+	tableNames := db.ListTables()
 
-	for _, table := range tables {
-		fmt.Printf("Table %s:\n", table.name)
-		fmt.Printf("%s\n\n", table.builder.BuildSQL())
+	for _, tableName := range tableNames {
+		table := allTables[tableName]
+		fmt.Printf("Table %s:\n", tableName)
+		fmt.Printf("%s\n\n", table.BuildSQL())
 	}
 
 	// 2. Connexion à la base et création réelle des tables
@@ -86,14 +79,12 @@ func runDemo() {
 
 	logging.Info.Println("Connecté à la base de données avec succès!")
 
-	// Création de toutes les tables
-	for _, table := range tables {
-		err = conn.CreateTable(table.builder)
-		if err != nil {
-			log.Printf("Erreur lors de la création de la table %s: %v", table.name, err)
-		} else {
-			logging.Info.Printf("Table %s créée avec succès!", table.name)
-		}
+	// Création de toutes les tables du schéma
+	err = db.InitAllTables(conn)
+	if err != nil {
+		log.Printf("Erreur lors de l'initialisation du schéma: %v", err)
+	} else {
+		logging.Info.Println("Toutes les tables du schéma ont été créées avec succès!")
 	}
 
 	// 3. Test des requêtes INSERT et SELECT
