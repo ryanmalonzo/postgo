@@ -1,6 +1,6 @@
-# PostGo - Simple PostgreSQL ORM avec Builder Pattern
+# postgo - ORM PostgreSQL avec système de typage automatique
 
-Un ORM PostgreSQL simple et léger utilisant le builder pattern pour la définition de tables.
+Un ORM PostgreSQL simple et léger offrant une **Developer Experience optimale** grâce à un système de génération de code qui fournit autocomplétion complète, validation des types et sécurité à la compilation.
 
 ## Installation
 
@@ -8,101 +8,131 @@ Un ORM PostgreSQL simple et léger utilisant le builder pattern pour la définit
 go mod tidy
 ```
 
-## Usage
+## Démarrage rapide
 
-The project includes multiple ways to run examples:
+### 1. Définir votre schéma dans `db/schema.go`
 
-### Basic Demo (default)
-```bash
-go run .
+```go
+func createUserTable() *TableBuilder {
+    return NewTable("users").
+        AddAttribute("name", String).NotNull().Build().
+        AddAttribute("email", String).NotNull().Unique().Build().
+        AddAttribute("password", String).NotNull().Build()
+}
 ```
 
-### Builder Pattern Examples
+### 2. Générer le code typé
+
 ```bash
-go run . -demo=builder
+make generate
 ```
 
-### Full Comprehensive Demo
-```bash
-go run . -demo=full
-```
-
-## Utilisation de base
-
-### Création d'une table simple
+### 3. Utiliser avec autocomplétion complète
 
 ```go
 package main
 
 import (
     "postgo/db"
-    _ "github.com/lib/pq"
+    "postgo/generated"
 )
 
 func main() {
-    // Connexion à la base
-    conn, err := db.NewConnection("localhost", 5432, "user", "password", "database")
+    conn, err := db.NewConnection("localhost", 5432, "postgo", "postgo", "postgo")
     if err != nil {
         panic(err)
     }
     defer conn.Close()
 
-    // Création d'une table avec le builder pattern
-    userTable := db.NewTable("users").
-        AddAttribute("name", db.String).NotNull().Build().
-        AddAttribute("email", db.String).NotNull().Unique().Build().
-        AddAttribute("password", db.String).NotNull().Build()
-
-    // Création de la table dans la base
-    err = conn.CreateTable(userTable)
+    // L'IDE propose automatiquement tous les noms de colonnes !
+    err = generated.Users.Insert().
+        SetName("John Doe").          // string
+        SetEmail("john@example.com"). // string avec contrainte UNIQUE  
+        SetPassword("secret123").     // string avec contrainte NOT NULL
+        Execute(conn)
+    
     if err != nil {
-        panic(err)
+        fmt.Printf("Erreur: %v\n", err)
     }
 }
 ```
 
-### Types de données disponibles
+## Utilisation
 
-- `db.String` - VARCHAR(255)
-- `db.Integer` - INTEGER
-- `db.Float` - FLOAT
-- `db.Boolean` - BOOLEAN
+### Définition du schéma
 
-### Contraintes disponibles
+Toutes les tables sont définies dans `db/schema.go` avec le builder pattern :
+
+```go
+// Table avec différents types de données
+func createCompanyTable() *TableBuilder {
+    return NewTable("companies").
+        AddAttribute("name", String).NotNull().Unique().Build().
+        AddAttribute("employee_count", Integer).Build().
+        AddAttribute("revenue", Float).Build().
+        AddAttribute("is_public", Boolean).NotNull().Build()
+}
+```
+
+#### Types de données disponibles
+
+- `String` - VARCHAR(255)
+- `Integer` - INTEGER  
+- `Float` - FLOAT
+- `Boolean` - BOOLEAN
+
+#### Contraintes disponibles
 
 - `.NotNull()` - Ajoute NOT NULL
 - `.Unique()` - Ajoute UNIQUE
 
-### Exemples d'utilisation
+### Génération et utilisation du code
+
+```bash
+# Générer le code typé
+make generate
+
+# Nettoyer et régénérer
+make regen
+
+# Tester la compilation
+make test
+```
+
+Le code généré fournit :
+
+- **Autocomplétion IDE complète** pour tous les noms de colonnes
+- **Validation des types à la compilation** (impossible de passer un `int` à une colonne `string`)
+- **Validation des contraintes à l'exécution** (champs NOT NULL obligatoires)
+- **Prévention des erreurs** de frappe et d'incohérences
 
 ```go
-// Table avec différents types de données
-productTable := db.NewTable("products").
-    AddAttribute("name", db.String).NotNull().Build().
-    AddAttribute("price", db.Float).NotNull().Build().
-    AddAttribute("in_stock", db.Boolean).Build().
-    AddAttribute("quantity", db.Integer).Build()
+// Types automatiquement détectés
+generated.Companies.Insert().
+    SetName("Tech Corp").           // string (NOT NULL)
+    SetEmployeeCount(150).          // int
+    SetRevenue(1250000.50).         // float64
+    SetIsPublic(true).              // bool (NOT NULL)
+    Execute(conn)
 
-// Table avec contraintes multiples
-categoryTable := db.NewTable("categories").
-    AddAttribute("slug", db.String).NotNull().Unique().Build().
-    AddAttribute("display_name", db.String).NotNull().Build()
-
-// Table minimale (seulement l'ID auto-incrémenté)
-simpleTable := db.NewTable("logs")
+// ❌ Erreurs détectées à la compilation
+generated.Users.Insert().
+    SetEmployeeCount("string")      // Type incorrect
+    SetInvalidColumn("value")       // Colonne inexistante
 ```
 
 ## Architecture
 
 ### Composants principaux
 
-- **TableBuilder** : Constructeur de table avec le pattern builder
-- **AttributeBuilder** : Constructeur d'attributs avec contraintes
+- **Schéma centralisé** (`db/schema.go`) : Définition de toutes les tables
+- **Générateur de code** (`cmd/generate/`) : Analyse le schéma et génère le code Go typé
+- **Code généré** (`generated/`) : Structures typées avec autocomplétion complète
 - **Connection** : Gestionnaire de connexion PostgreSQL
 
 ### SQL généré
 
-Le builder génère automatiquement :
+Le système génère automatiquement :
 
 - Un ID SERIAL PRIMARY KEY pour chaque table
 - Les définitions de colonnes avec leurs types
@@ -119,6 +149,26 @@ CREATE TABLE IF NOT EXISTS "users" (
 )
 ```
 
+## Workflow de développement
+
+Le workflow est optimisé pour la productivité :
+
+1. **Modifier le schéma** dans `db/schema.go`
+2. **Régénérer** avec `make generate` 
+3. **Utiliser immédiatement** avec autocomplétion complète
+
+```bash
+# Cycle de développement
+make regen    # Nettoie, régénère et teste
+```
+
+## Démonstration
+
+```bash
+# Démo complète avec le système typé
+go run . -demo=typed
+```
+
 ## Test avec Docker
 
 Pour tester rapidement avec PostgreSQL :
@@ -129,23 +179,20 @@ docker-compose up -d
 
 Cela démarre PostgreSQL et Adminer sur http://localhost:8080
 
-## Exemples
-
-Voir les fichiers d'exemple :
-
-- `main.go` - Exemple de base
-- `example_builder.go` - Démonstration complète du builder pattern
-- `examples/` - Définitions de tables d'exemple
-
 ## Philosophie
 
-Cet ORM est volontairement simple :
+postgo est volontairement simple tout en offrant une **Developer Experience moderne** :
 
-- ✅ ID auto-incrémenté obligatoire
-- ✅ Types de base (String, Integer, Float, Boolean)
-- ✅ Contraintes essentielles (NOT NULL, UNIQUE)
+- ✅ **ID auto-incrémenté obligatoire** pour chaque table
+- ✅ **Types de base** (String, Integer, Float, Boolean) 
+- ✅ **Contraintes essentielles** (NOT NULL, UNIQUE)
+- ✅ **Autocomplétion complète** grâce au code généré
+- ✅ **Validation à la compilation** pour éviter les erreurs
+- ✅ **Simplicité d'usage** avec API intuitive
+
+Limitations volontaires :
 - ❌ Pas de foreign keys
-- ❌ Pas d'index personnalisés
+- ❌ Pas d'index personnalisés  
 - ❌ Pas de relations complexes
 
-L'objectif est de fournir un outil simple et prévisible pour des cas d'usage basiques.
+L'objectif est de fournir un outil **simple, sûr et productif** pour des cas d'usage basiques avec la meilleure expérience développeur possible.
