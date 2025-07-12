@@ -9,9 +9,9 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// DemoTypedInserts démontre l'utilisation du système de typage généré pour Insert et Update
+// DemoTypedInserts démontre l'utilisation du système de typage généré pour Insert, Update et Delete
 func DemoTypedInserts() {
-	fmt.Println("=== Démonstration du système de typage généré (Insert & Update) ===")
+	fmt.Println("=== Démonstration du système de typage généré (Insert, Update & Delete) ===")
 
 	// Connexion à la base de données
 	conn, err := db.NewConnection("localhost", 5432, "postgo", "postgo", "postgo")
@@ -157,6 +157,105 @@ func DemoTypedInserts() {
 
 	// 10. Test de prévention de duplication de colonnes
 	fmt.Println("\n--- Test de prévention de duplication ---")
+	testDuplicationPrevention()
+
+	// === EXEMPLES DE DELETE ===
+	
+	// Insérer des données spécifiques pour les tests de suppression
+	fmt.Println("\n--- Préparation des données pour les tests Delete ---")
+	
+	// Insertion d'un utilisateur pour test de suppression
+	err = generated.Users.Insert().
+		SetName("User To Delete").
+		SetEmail("delete.me@example.com").
+		SetPassword("password123").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Note: Erreur lors de l'insertion du test user: %v\n", err)
+	}
+
+	// Insertion d'un post pour test de suppression
+	err = generated.Posts.Insert().
+		SetTitle("Post à supprimer").
+		SetContent("Ce post sera supprimé dans les tests.").
+		SetPublished(false).
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Note: Erreur lors de l'insertion du test post: %v\n", err)
+	}
+
+	// 11. Suppression d'un utilisateur spécifique
+	fmt.Println("\n--- Suppression d'un utilisateur ---")
+	err = generated.Users.Delete().
+		Where("email = 'delete.me@example.com'").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Erreur lors de la suppression: %v\n", err)
+	} else {
+		fmt.Println("✓ Utilisateur supprimé avec succès!")
+	}
+
+	// 12. Suppression d'une entreprise par nom (plus sûr que par ID)
+	fmt.Println("\n--- Suppression d'une entreprise ---")
+	err = generated.Companies.Delete().
+		Where("name = 'Tech Corp'").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Erreur lors de la suppression: %v\n", err)
+	} else {
+		fmt.Println("✓ Entreprise supprimée avec succès!")
+	}
+
+	// 13. Suppression avec conditions multiples
+	fmt.Println("\n--- Suppression avec conditions multiples ---")
+	err = generated.Posts.Delete().
+		Where("published = false").
+		Where("title LIKE '%supprimer%'").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Erreur lors de la suppression: %v\n", err)
+	} else {
+		fmt.Println("✓ Posts supprimés avec succès!")
+	}
+
+	// 14. Suppression de catégories par slug
+	fmt.Println("\n--- Suppression de catégories ---")
+	err = generated.Categories.Delete().
+		Where("slug = 'technology'").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Erreur lors de la suppression: %v\n", err)
+	} else {
+		fmt.Println("✓ Catégorie supprimée avec succès!")
+	}
+
+	// 15. Test de construction de requête sans exécution
+	fmt.Println("\n--- Test de construction de requête DELETE ---")
+	sqlQuery, args := generated.Users.Delete().
+		Where("email LIKE '%@example.com'").
+		Build()
+	
+	fmt.Printf("Requête SQL générée: %s\n", sqlQuery)
+	fmt.Printf("Arguments: %v\n", args)
+
+	// 16. Test de validation - DELETE sans condition WHERE
+	fmt.Println("\n--- Test de validation DELETE sans WHERE ---")
+	sqlQueryNoWhere, argsNoWhere := generated.Users.Delete().Build()
+	fmt.Printf("Requête sans WHERE: %s\n", sqlQueryNoWhere)
+	fmt.Printf("Arguments sans WHERE: %v\n", argsNoWhere)
+	fmt.Println("⚠️  Attention: Cette requête supprimerait tous les utilisateurs!")
+
+	fmt.Println("\n=== Démonstration terminée ===")
+}
+
+// testDuplicationPrevention teste la prévention de duplication de colonnes
+func testDuplicationPrevention() {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("✓ Validation réussie - Panic attendu: %v\n", r)
@@ -169,6 +268,4 @@ func DemoTypedInserts() {
 		Where("id = 1")
 	
 	fmt.Println("❌ La validation a échoué - aucun panic détecté")
-
-	fmt.Println("\n=== Démonstration terminée ===")
 }

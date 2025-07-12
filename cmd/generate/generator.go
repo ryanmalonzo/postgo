@@ -34,6 +34,13 @@ type UpdateBuilder interface {
 	Build() (string, []interface{})
 	Where(condition string) UpdateBuilder
 }
+
+// Interface commune pour tous les builders de suppression
+type DeleteBuilder interface {
+	Execute(conn *db.Connection) error
+	Build() (string, []interface{})
+	Where(condition string) DeleteBuilder
+}
 `
 
 	return writeFile(filepath.Join(outputDir, "types.go"), content)
@@ -100,6 +107,11 @@ type %sUpdateBuilder struct {
 %s
 }
 
+// %sDeleteBuilder permet de supprimer des données de la table %s
+type %sDeleteBuilder struct {
+	query *query.DeleteQuery
+}
+
 // Insert crée un nouveau builder pour insérer dans la table %s
 func (t *%sTable) Insert() *%sInsertBuilder {
 	return &%sInsertBuilder{
@@ -111,6 +123,13 @@ func (t *%sTable) Insert() *%sInsertBuilder {
 func (t *%sTable) Update() *%sUpdateBuilder {
 	return &%sUpdateBuilder{
 		query: query.NewUpdateQuery("%s"),
+	}
+}
+
+// Delete crée un nouveau builder pour supprimer de la table %s
+func (t *%sTable) Delete() *%sDeleteBuilder {
+	return &%sDeleteBuilder{
+		query: query.NewDeleteQuery("%s"),
 	}
 }
 %s
@@ -149,6 +168,24 @@ func (b *%sUpdateBuilder) Execute(conn *db.Connection) error {
 func (b *%sUpdateBuilder) Build() (string, []interface{}) {
 	return b.query.Build(), b.query.GetValues()
 }
+
+// Where ajoute une condition WHERE à la requête de suppression
+func (b *%sDeleteBuilder) Where(condition string) *%sDeleteBuilder {
+	b.query.AddCondition(condition)
+	return b
+}
+
+// Execute exécute la requête de suppression
+func (b *%sDeleteBuilder) Execute(conn *db.Connection) error {
+	sqlQuery := b.query.Build()
+	_, err := conn.GetDB().Exec(sqlQuery)
+	return err
+}
+
+// Build retourne la requête SQL pour la suppression
+func (b *%sDeleteBuilder) Build() (string, []interface{}) {
+	return b.query.Build(), []interface{}{}
+}
 `,
 		titleName, tableName,
 		titleName,
@@ -160,6 +197,11 @@ func (b *%sUpdateBuilder) Build() (string, []interface{}) {
 		titleName, tableName,
 		titleName,
 		updateFields,
+		titleName, tableName,
+		titleName,
+		tableName,
+		titleName, titleName,
+		titleName, tableName,
 		tableName,
 		titleName, titleName,
 		titleName, tableName,
@@ -170,6 +212,9 @@ func (b *%sUpdateBuilder) Build() (string, []interface{}) {
 		updateMethods,
 		titleName,
 		insertRequiredChecks,
+		titleName,
+		titleName, titleName,
+		titleName,
 		titleName,
 		titleName, titleName,
 		titleName,
