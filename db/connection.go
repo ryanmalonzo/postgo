@@ -36,3 +36,8 @@ func NewConnection(host string, port int, user, password, dbname string) (*Conne
 func (c *Connection) Close() error {
 	return c.db.Close()
 }
+
+// GetDB retourne l'instance de base de données (pour le code généré)
+func (c *Connection) GetDB() *sql.DB {
+	return c.db
+}

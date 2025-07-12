@@ -118,3 +118,68 @@ func (c *Connection) CreateTable(tableBuilder *TableBuilder) error {
 	}
 	return nil
 }
+
+// === MÉTHODES POUR LE GÉNÉRATEUR ===
+
+// GetName retourne le nom de la table
+func (tb *TableBuilder) GetName() string {
+	return tb.name
+}
+
+// GetAttributes retourne tous les attributs de la table
+func (tb *TableBuilder) GetAttributes() []*Attribute {
+	return tb.attributes
+}
+
+// GetName retourne le nom de l'attribut
+func (a *Attribute) GetName() string {
+	return a.name
+}
+
+// GetDataType retourne le type de données de l'attribut
+func (a *Attribute) GetDataType() AttributeType {
+	return a.dataType
+}
+
+// GetConstraints retourne les contraintes de l'attribut
+func (a *Attribute) GetConstraints() []string {
+	return a.constraints
+}
+
+// IsRequired vérifie si l'attribut a la contrainte NOT NULL
+func (a *Attribute) IsRequired() bool {
+	for _, constraint := range a.constraints {
+		if constraint == "NOT NULL" {
+			return true
+		}
+	}
+	return false
+}
+
+// IsUnique vérifie si l'attribut a la contrainte UNIQUE
+func (a *Attribute) IsUnique() bool {
+	for _, constraint := range a.constraints {
+		if constraint == "UNIQUE" {
+			return true
+		}
+	}
+	return false
+}
+
+// GetGoType retourne le type Go correspondant au type de données
+func (a *Attribute) GetGoType() string {
+	switch a.dataType {
+	case String:
+		return "string"
+	case Integer:
+		return "int"
+	case Float:
+		return "float64"
+	case Boolean:
+		return "bool"
+	case "SERIAL":
+		return "int"
+	default:
+		return "interface{}"
+	}
+}

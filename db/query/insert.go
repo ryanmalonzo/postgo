@@ -63,3 +63,8 @@ func (q *InsertQuery) Execute(db *sql.DB) (sql.Result, error) {
 	}
 	return result, nil
 }
+
+// GetValues retourne les valeurs de la requête (utile pour le générateur)
+func (q *InsertQuery) GetValues() []interface{} {
+	return q.values
+}

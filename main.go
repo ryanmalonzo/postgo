@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	var demo = flag.String("demo", "", "Demo to run: 'builder', 'full', or leave empty for basic")
+	var demo = flag.String("demo", "", "Demo to run: 'builder', 'full', 'typed', or leave empty for basic")
 	flag.Parse()
 
 	switch *demo {
@@ -21,6 +21,8 @@ func main() {
 		runExampleBuilder()
 	case "full":
 		runDemo()
+	case "typed":
+		examples.DemoTypedInserts()
 	default:
 		runBasicDemo()
 	}
