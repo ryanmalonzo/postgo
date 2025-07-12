@@ -9,9 +9,9 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// DemoTypedInserts démontre l'utilisation du système de typage généré
+// DemoTypedInserts démontre l'utilisation du système de typage généré pour Insert et Update
 func DemoTypedInserts() {
-	fmt.Println("=== Démonstration du système de typage généré ===")
+	fmt.Println("=== Démonstration du système de typage généré (Insert & Update) ===")
 
 	// Connexion à la base de données
 	conn, err := db.NewConnection("localhost", 5432, "postgo", "postgo", "postgo")
@@ -99,6 +99,76 @@ func DemoTypedInserts() {
 	} else {
 		fmt.Println("❌ La validation a échoué - aucune erreur détectée")
 	}
+
+	// === EXEMPLES D'UPDATE ===
+	
+	// 6. Update d'un utilisateur
+	fmt.Println("\n--- Update d'un utilisateur ---")
+	err = generated.Users.Update().
+		SetName("John Doe Updated").
+		SetEmail("john.updated@example.com").
+		Where("name = 'John Doe'").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Erreur lors de l'update: %v\n", err)
+	} else {
+		fmt.Println("✓ Utilisateur mis à jour avec succès!")
+	}
+
+	// 7. Update d'une entreprise (colonnes optionnelles)
+	fmt.Println("\n--- Update d'une entreprise ---")
+	err = generated.Companies.Update().
+		SetEmployeeCount(200).
+		SetRevenue(2500000.75).
+		Where("name = 'Tech Corp'").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Erreur lors de l'update: %v\n", err)
+	} else {
+		fmt.Println("✓ Entreprise mise à jour avec succès!")
+	}
+
+	// 8. Update d'une seule colonne
+	fmt.Println("\n--- Update d'une seule colonne ---")
+	err = generated.Posts.Update().
+		SetPublished(false).
+		Where("title = 'Mon premier article'").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Erreur lors de l'update: %v\n", err)
+	} else {
+		fmt.Println("✓ Post mis à jour avec succès!")
+	}
+
+	// 9. Test de validation "aucune colonne à mettre à jour"
+	fmt.Println("\n--- Test de validation des updates vides ---")
+	err = generated.Users.Update().
+		Where("id = 1").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("✓ Validation réussie - Erreur attendue: %v\n", err)
+	} else {
+		fmt.Println("❌ La validation a échoué - aucune erreur détectée")
+	}
+
+	// 10. Test de prévention de duplication de colonnes
+	fmt.Println("\n--- Test de prévention de duplication ---")
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("✓ Validation réussie - Panic attendu: %v\n", r)
+		}
+	}()
+	
+	generated.Categories.Update().
+		SetSlug("tech").
+		SetSlug("technology"). // Tentative de redéfinir la même colonne
+		Where("id = 1")
+	
+	fmt.Println("❌ La validation a échoué - aucun panic détecté")
 
 	fmt.Println("\n=== Démonstration terminée ===")
 }

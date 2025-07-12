@@ -54,6 +54,17 @@ func main() {
     if err != nil {
         fmt.Printf("Erreur: %v\n", err)
     }
+
+    // Update avec autocomplétion complète et validation !
+    err = generated.Users.Update().
+        SetName("John Doe Updated").
+        SetEmail("john.updated@example.com").
+        Where("id = 1").
+        Execute(conn)
+    
+    if err != nil {
+        fmt.Printf("Erreur: %v\n", err)
+    }
 }
 ```
 
@@ -121,6 +132,30 @@ generated.Users.Insert().
     SetInvalidColumn("value")       // Colonne inexistante
 ```
 
+### Opérations Update
+
+Le système génère également des builders typés pour les mises à jour :
+
+```go
+// Update simple avec validation automatique
+generated.Users.Update().
+    SetName("Nouveau nom").
+    SetEmail("nouveau@email.com").
+    Where("id = 1").
+    Execute(conn)
+
+// Update avec validation "au moins une colonne"
+err := generated.Companies.Update().
+    Where("name = 'Tech Corp'").    // ❌ Erreur : aucune colonne à mettre à jour
+    Execute(conn)
+
+// Update avec conditions WHERE complexes
+generated.Posts.Update().
+    SetPublished(true).
+    Where("published = false AND created_at < '2024-01-01'").
+    Execute(conn)
+```
+
 ## Architecture
 
 ### Composants principaux
@@ -186,6 +221,7 @@ postgo est volontairement simple tout en offrant une **Developer Experience mode
 - ✅ **ID auto-incrémenté obligatoire** pour chaque table
 - ✅ **Types de base** (String, Integer, Float, Boolean) 
 - ✅ **Contraintes essentielles** (NOT NULL, UNIQUE)
+- ✅ **Opérations CRUD typées** (Insert, Update avec autocomplétion)
 - ✅ **Autocomplétion complète** grâce au code généré
 - ✅ **Validation à la compilation** pour éviter les erreurs
 - ✅ **Simplicité d'usage** avec API intuitive

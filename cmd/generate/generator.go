@@ -27,6 +27,13 @@ type InsertBuilder interface {
 	Execute(conn *db.Connection) error
 	Build() (string, []interface{})
 }
+
+// Interface commune pour tous les builders d'update
+type UpdateBuilder interface {
+	Execute(conn *db.Connection) error
+	Build() (string, []interface{})
+	Where(condition string) UpdateBuilder
+}
 `
 
 	return writeFile(filepath.Join(outputDir, "types.go"), content)
@@ -53,52 +60,14 @@ var (
 
 // generateTableFile génère un fichier dédié pour chaque table
 func generateTableFile(outputDir, tableName string, table *db.TableBuilder) error {
-	// Obtenir les attributs de la table
 	attributes := table.GetAttributes()
 	titleName := titleCase(tableName)
 	
-	var setMethods []string
-	var requiredChecks []string
-	var fieldDeclarations []string
+	// Générer les composants pour Insert
+	insertFields, insertMethods, insertRequiredChecks := generateInsertComponents(attributes, titleName)
 	
-	for _, attr := range attributes {
-		attrName := attr.GetName()
-		
-		// Ignorer l'ID car il est auto-généré
-		if attrName == "id" {
-			continue
-		}
-		
-		// Convertir le nom de l'attribut en format Go (snake_case vers CamelCase)
-		titleAttrName := toCamelCase(attrName)
-		lowerAttrName := strings.ToLower(strings.ReplaceAll(attrName, "_", ""))
-		goType := attr.GetGoType()
-		
-		// Déclaration du champ pour suivre si la valeur a été définie
-		fieldDeclarations = append(fieldDeclarations, fmt.Sprintf("	%sSet bool", lowerAttrName))
-		
-		// Méthode Set pour cet attribut
-		setMethod := fmt.Sprintf(`
-// Set%s définit la valeur pour la colonne %s
-func (b *%sInsertBuilder) Set%s(value %s) *%sInsertBuilder {
-	if b.%sSet {
-		panic("La colonne %s a déjà été définie")
-	}
-	b.query.AddColumn("%s").AddValue(value)
-	b.%sSet = true
-	return b
-}`, titleAttrName, attrName, titleName, titleAttrName, goType, titleName, lowerAttrName, attrName, attrName, lowerAttrName)
-		
-		setMethods = append(setMethods, setMethod)
-		
-		// Vérification pour les champs obligatoires
-		if attr.IsRequired() {
-			requiredCheck := fmt.Sprintf(`	if !b.%sSet {
-		return fmt.Errorf("la colonne obligatoire '%s' n'a pas été définie")
-	}`, lowerAttrName, attrName)
-			requiredChecks = append(requiredChecks, requiredCheck)
-		}
-	}
+	// Générer les composants pour Update
+	updateFields, updateMethods := generateUpdateComponents(attributes, titleName)
 	
 	content := fmt.Sprintf(`// Code généré automatiquement - NE PAS MODIFIER
 package generated
@@ -125,12 +94,26 @@ type %sInsertBuilder struct {
 %s
 }
 
+// %sUpdateBuilder permet de mettre à jour des données dans la table %s
+type %sUpdateBuilder struct {
+	query *query.UpdateQuery
+%s
+}
+
 // Insert crée un nouveau builder pour insérer dans la table %s
 func (t *%sTable) Insert() *%sInsertBuilder {
 	return &%sInsertBuilder{
 		query: query.NewInsertQuery("%s"),
 	}
 }
+
+// Update crée un nouveau builder pour mettre à jour la table %s
+func (t *%sTable) Update() *%sUpdateBuilder {
+	return &%sUpdateBuilder{
+		query: query.NewUpdateQuery("%s"),
+	}
+}
+%s
 %s
 
 // Execute exécute la requête d'insertion
@@ -141,8 +124,29 @@ func (b *%sInsertBuilder) Execute(conn *db.Connection) error {
 	return err
 }
 
-// Build retourne la requête SQL et les arguments
+// Build retourne la requête SQL et les arguments pour l'insertion
 func (b *%sInsertBuilder) Build() (string, []interface{}) {
+	return b.query.Build(), b.query.GetValues()
+}
+
+// Where ajoute une condition WHERE à la requête d'update
+func (b *%sUpdateBuilder) Where(condition string) *%sUpdateBuilder {
+	b.query.Where(condition)
+	return b
+}
+
+// Execute exécute la requête d'update
+func (b *%sUpdateBuilder) Execute(conn *db.Connection) error {
+	if len(b.query.GetValues()) == 0 {
+		return fmt.Errorf("aucune colonne à mettre à jour")
+	}
+	sqlQuery, args := b.query.Build(), b.query.GetValues()
+	_, err := conn.GetDB().Exec(sqlQuery, args...)
+	return err
+}
+
+// Build retourne la requête SQL et les arguments pour l'update
+func (b *%sUpdateBuilder) Build() (string, []interface{}) {
 	return b.query.Build(), b.query.GetValues()
 }
 `,
@@ -152,16 +156,113 @@ func (b *%sInsertBuilder) Build() (string, []interface{}) {
 		titleName, titleName, tableName,
 		titleName, tableName,
 		titleName,
-		strings.Join(fieldDeclarations, "\n"),
+		insertFields,
+		titleName, tableName,
+		titleName,
+		updateFields,
 		tableName,
 		titleName, titleName,
 		titleName, tableName,
-		strings.Join(setMethods, ""),
+		tableName,
+		titleName, titleName,
+		titleName, tableName,
+		insertMethods,
+		updateMethods,
 		titleName,
-		strings.Join(requiredChecks, "\n"),
+		insertRequiredChecks,
+		titleName,
+		titleName, titleName,
+		titleName,
 		titleName)
 
 	return writeFile(filepath.Join(outputDir, tableName+".go"), content)
+}
+
+// generateInsertComponents génère les composants pour le builder d'insertion
+func generateInsertComponents(attributes []*db.Attribute, titleName string) (fields, methods, requiredChecks string) {
+	var fieldDeclarations []string
+	var setMethods []string
+	var requiredChecksList []string
+	
+	for _, attr := range attributes {
+		attrName := attr.GetName()
+		
+		// Ignorer l'ID car il est auto-généré pour les inserts
+		if attrName == "id" {
+			continue
+		}
+		
+		titleAttrName := toCamelCase(attrName)
+		lowerAttrName := strings.ToLower(strings.ReplaceAll(attrName, "_", ""))
+		goType := attr.GetGoType()
+		
+		// Déclaration du champ pour suivre si la valeur a été définie
+		fieldDeclarations = append(fieldDeclarations, fmt.Sprintf("	%sSet bool", lowerAttrName))
+		
+		// Méthode Set pour cet attribut
+		setMethod := fmt.Sprintf(`
+// Set%s définit la valeur pour la colonne %s
+func (b *%sInsertBuilder) Set%s(value %s) *%sInsertBuilder {
+	if b.%sSet {
+		panic("La colonne %s a déjà été définie")
+	}
+	b.query.AddColumn("%s").AddValue(value)
+	b.%sSet = true
+	return b
+}`, titleAttrName, attrName, titleName, titleAttrName, goType, titleName, lowerAttrName, attrName, attrName, lowerAttrName)
+		
+		setMethods = append(setMethods, setMethod)
+		
+		// Vérification pour les champs obligatoires
+		if attr.IsRequired() {
+			requiredCheck := fmt.Sprintf(`	if !b.%sSet {
+		return fmt.Errorf("la colonne obligatoire '%s' n'a pas été définie")
+	}`, lowerAttrName, attrName)
+			requiredChecksList = append(requiredChecksList, requiredCheck)
+		}
+	}
+	
+	return strings.Join(fieldDeclarations, "\n"), 
+		   strings.Join(setMethods, ""), 
+		   strings.Join(requiredChecksList, "\n")
+}
+
+// generateUpdateComponents génère les composants pour le builder d'update
+func generateUpdateComponents(attributes []*db.Attribute, titleName string) (fields, methods string) {
+	var fieldDeclarations []string
+	var setMethods []string
+	
+	for _, attr := range attributes {
+		attrName := attr.GetName()
+		
+		// Ignorer l'ID car on ne devrait pas l'updater
+		if attrName == "id" {
+			continue
+		}
+		
+		titleAttrName := toCamelCase(attrName)
+		lowerAttrName := strings.ToLower(strings.ReplaceAll(attrName, "_", ""))
+		goType := attr.GetGoType()
+		
+		// Déclaration du champ pour suivre si la valeur a été définie
+		fieldDeclarations = append(fieldDeclarations, fmt.Sprintf("	%sSet bool", lowerAttrName))
+		
+		// Méthode Set pour cet attribut (pour Update)
+		setMethod := fmt.Sprintf(`
+// Set%s définit la valeur pour la colonne %s dans l'update
+func (b *%sUpdateBuilder) Set%s(value %s) *%sUpdateBuilder {
+	if b.%sSet {
+		panic("La colonne %s a déjà été définie")
+	}
+	b.query.AddColumn("%s").AddValue(value)
+	b.%sSet = true
+	return b
+}`, titleAttrName, attrName, titleName, titleAttrName, goType, titleName, lowerAttrName, attrName, attrName, lowerAttrName)
+		
+		setMethods = append(setMethods, setMethod)
+	}
+	
+	return strings.Join(fieldDeclarations, "\n"), strings.Join(setMethods, "")
 }
 
 // toCamelCase convertit une chaîne snake_case en CamelCase

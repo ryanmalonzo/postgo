@@ -74,3 +74,8 @@ func (q *UpdateQuery) Execute(db *sql.DB) error {
 	_, err := db.Exec(query, q.values...)
 	return err
 }
+
+// GetValues retourne les valeurs de la requête (utile pour le générateur)
+func (q *UpdateQuery) GetValues() []interface{} {
+	return q.values
+}
