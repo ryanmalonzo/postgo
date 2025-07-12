@@ -1,6 +1,6 @@
 # Makefile pour PostGO
 
-.PHONY: generate clean build run demo-typed demo-builder demo-full test help
+.PHONY: generate clean build run demo-typed test help
 
 # Génère le code typé automatiquement
 generate:
@@ -29,14 +29,6 @@ demo-typed: generate
 	@echo "Lancement de la démo typée..."
 	@go run main.go -demo=typed
 
-# Lance la démo avec le builder pattern
-demo-builder:
-	@go run main.go -demo=builder
-
-# Lance la démo complète
-demo-full:
-	@go run main.go -demo=full
-
 # Teste la compilation du code généré
 test: generate
 	@echo "Test de compilation du code généré..."
@@ -55,8 +47,6 @@ help:
 	@echo "  build        - Construit le projet"
 	@echo "  run          - Lance la démo basique"
 	@echo "  demo-typed   - Lance la démo avec le système typé"
-	@echo "  demo-builder - Lance la démo avec le builder pattern"
-	@echo "  demo-full    - Lance la démo complète"
 	@echo "  test         - Teste la compilation du code généré"
 	@echo "  regen        - Nettoie, régénère et teste"
 	@echo "  help         - Affiche cette aide"

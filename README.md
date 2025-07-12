@@ -174,7 +174,7 @@ go run . -demo=typed
 Pour tester rapidement avec PostgreSQL :
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 Cela démarre PostgreSQL et Adminer sur http://localhost:8080
