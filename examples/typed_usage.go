@@ -281,7 +281,7 @@ func DemoTypedInserts() {
 		}
 	}
 
-	// Test 2: Select avec colonnes spécifiques
+	// 18. Select avec colonnes spécifiques
 	fmt.Println("\n2. Test Select avec colonnes spécifiques:")
 	users, err = generated.Users.Select().
 	SelectColumns("name", "email").
@@ -295,7 +295,7 @@ func DemoTypedInserts() {
 		}
 	}
 
-	// Test 3: Select avec condition WHERE
+	// 19. Select avec condition WHERE
 	fmt.Println("\n3. Test Select avec WHERE:")
 	users, err = generated.Users.Select().
 	SelectAll().
@@ -310,7 +310,7 @@ func DemoTypedInserts() {
 		}
 	}
 
-	// Test 4: Select avec WHERE typé
+	// 20. Select avec WHERE typé
 	fmt.Println("\n4. Test Select avec WHERE typé:")
 	users, err = generated.Users.Select().
 	SelectAll().
@@ -325,7 +325,7 @@ func DemoTypedInserts() {
 		}
 	}
 
-	// Test 5: ExecuteOne - Récupérer un seul utilisateur
+	// 21. ExecuteOne - Récupérer un seul utilisateur
 	fmt.Println("\n5. Test récupérer user by ID:")
 	user, err := generated.Users.Select().
 	SelectAll().

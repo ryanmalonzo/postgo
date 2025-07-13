@@ -2,15 +2,14 @@ package query
 
 import (
 	"database/sql"
-	"fmt"
 	"strings"
 )
 
 type SelectQuery struct {
-	BaseQuery
-	table   string
-	columns []string
-	values  []interface{}
+	table      string
+	columns    []string
+	conditions []string
+	values     []interface{}
 }
 
 func NewSelectQuery(table string) *SelectQuery {
@@ -34,42 +33,13 @@ func (q *SelectQuery) Where(condition string) *SelectQuery {
 	return q
 }
 
-func (q *SelectQuery) OrderBy(column string, direction string) *SelectQuery {
-	q.orderBy = append(q.orderBy, column+" "+direction)
-	return q
-}
-
-func (q *SelectQuery) Limit(limit int) *SelectQuery {
-	q.limit = &limit
-	return q
-}
-
-func (q *SelectQuery) Offset(offset int) *SelectQuery {
-	q.offset = &offset
-	return q
-}
-
 func (q *SelectQuery) Build() string {
 	query := "SELECT " + strings.Join(q.columns, ", ") + " FROM " + q.table
 	
-	// Gestion manuelle des clauses WHERE avec numérotation des paramètres
+	// Gestion des clauses WHERE
 	if len(q.conditions) > 0 {
-		// Remplacer les $1 par les bons numéros de paramètres
 		whereClause := "WHERE " + strings.Join(q.conditions, " AND ")
 		query += " " + whereClause
-	}
-	
-	// Ajouter les autres clauses (ORDER BY, LIMIT, OFFSET) qui n'ont pas de paramètres
-	if len(q.orderBy) > 0 {
-		query += " ORDER BY " + strings.Join(q.orderBy, ", ")
-	}
-	
-	if q.limit != nil {
-		query += " LIMIT " + fmt.Sprintf("%d", *q.limit)
-	}
-	
-	if q.offset != nil {
-		query += " OFFSET " + fmt.Sprintf("%d", *q.offset)
 	}
 	
 	return query
