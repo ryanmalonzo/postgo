@@ -2,6 +2,7 @@ package query
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 )
 
@@ -9,6 +10,7 @@ type SelectQuery struct {
 	BaseQuery
 	table   string
 	columns []string
+	values  []interface{}
 }
 
 func NewSelectQuery(table string) *SelectQuery {
@@ -49,18 +51,47 @@ func (q *SelectQuery) Offset(offset int) *SelectQuery {
 
 func (q *SelectQuery) Build() string {
 	query := "SELECT " + strings.Join(q.columns, ", ") + " FROM " + q.table
-	commonClauses := q.buildCommonClauses()
-	if commonClauses != "" {
-		query += " " + commonClauses
+	
+	// Gestion manuelle des clauses WHERE avec numérotation des paramètres
+	if len(q.conditions) > 0 {
+		// Remplacer les $1 par les bons numéros de paramètres
+		whereClause := "WHERE " + strings.Join(q.conditions, " AND ")
+		query += " " + whereClause
 	}
+	
+	// Ajouter les autres clauses (ORDER BY, LIMIT, OFFSET) qui n'ont pas de paramètres
+	if len(q.orderBy) > 0 {
+		query += " ORDER BY " + strings.Join(q.orderBy, ", ")
+	}
+	
+	if q.limit != nil {
+		query += " LIMIT " + fmt.Sprintf("%d", *q.limit)
+	}
+	
+	if q.offset != nil {
+		query += " OFFSET " + fmt.Sprintf("%d", *q.offset)
+	}
+	
 	return query
 }
 
 func (q *SelectQuery) Execute(db *sql.DB) (*sql.Rows, error) {
 	query := q.Build()
-	rows, err := db.Query(query)
+	rows, err := db.Query(query, q.values...)
 	if err != nil {
 		return nil, err
 	}
 	return rows, nil
+}
+
+// WhereWithValue ajoute une condition WHERE avec une valeur paramétrée
+func (q *SelectQuery) WhereWithValue(condition string, value interface{}) *SelectQuery {
+	q.conditions = append(q.conditions, condition)
+	q.values = append(q.values, value)
+	return q
+}
+
+// GetValues retourne les valeurs de la requête (utile pour le générateur)
+func (q *SelectQuery) GetValues() []interface{} {
+	return q.values
 }

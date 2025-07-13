@@ -2,6 +2,7 @@ package examples
 
 import (
 	"fmt"
+	"log"
 	"postgo/db"
 	"postgo/generated"
 	"postgo/logging"
@@ -250,6 +251,91 @@ func DemoTypedInserts() {
 	fmt.Printf("Requête sans WHERE: %s\n", sqlQueryNoWhere)
 	fmt.Printf("Arguments sans WHERE: %v\n", argsNoWhere)
 	fmt.Println("⚠️  Attention: Cette requête supprimerait tous les utilisateurs!")
+
+	// === EXEMPLES DE SELECT ===
+
+	fmt.Println("\n--- Insertion d'un utilisateur ---")
+	err = generated.Users.Insert().
+		SetName("Alice Doe").
+		SetEmail("alice.doe@example.com").
+		SetPassword("securepassword123").
+		Execute(conn)
+	
+	if err != nil {
+		fmt.Printf("Erreur lors de l'insertion: %v\n", err)
+	} else {
+		fmt.Println("✓ Utilisateur inséré avec succès!")
+	}
+
+	// 17. SelectAll - Récupérer tous les utilisateurs
+	fmt.Println("\n1. Test SelectAll:")
+	users, err := generated.Users.Select().
+	SelectAll().
+	Execute(conn)
+	if err != nil {
+		log.Printf("Erreur lors du SelectAll: %v", err)
+	} else {
+		fmt.Printf("Nombre d'utilisateurs trouvés: %d\n", len(users))
+		for _, user := range users {
+			fmt.Printf("  - ID: %d, Name: %s, Email: %s\n", user.Id, user.Name, user.Email)
+		}
+	}
+
+	// Test 2: Select avec colonnes spécifiques
+	fmt.Println("\n2. Test Select avec colonnes spécifiques:")
+	users, err = generated.Users.Select().
+	SelectColumns("name", "email").
+	Execute(conn)
+	if err != nil {
+		log.Printf("Erreur lors du Select avec colonnes: %v", err)
+	} else {
+		fmt.Printf("Nombre d'utilisateurs (name, email) trouvés: %d\n", len(users))
+		for _, user := range users {
+			fmt.Printf("  - Name: %s, Email: %s\n", user.Name, user.Email)
+		}
+	}
+
+	// Test 3: Select avec condition WHERE
+	fmt.Println("\n3. Test Select avec WHERE:")
+	users, err = generated.Users.Select().
+	SelectAll().
+	Where("name LIKE '%John%'").
+	Execute(conn)
+	if err != nil {
+		log.Printf("Erreur lors du Select avec WHERE: %v", err)
+	} else {
+		fmt.Printf("Nombre d'utilisateurs avec 'John' dans le nom: %d\n", len(users))
+		for _, user := range users {
+			fmt.Printf("  - ID: %d, Name: %s, Email: %s\n", user.Id, user.Name, user.Email)
+		}
+	}
+
+	// Test 4: Select avec WHERE typé
+	fmt.Println("\n4. Test Select avec WHERE typé:")
+	users, err = generated.Users.Select().
+	SelectAll().
+	WhereName("Alice Doe").
+	Execute(conn)
+	if err != nil {
+		log.Printf("Erreur lors du Select avec WHERE typé: %v", err)
+	} else {
+		fmt.Printf("Nombre d'utilisateurs nommés 'Alice Doe': %d\n", len(users))
+		for _, user := range users {
+			fmt.Printf("  - ID: %d, Name: %s, Email: %s\n", user.Id, user.Name, user.Email)
+		}
+	}
+
+	// Test 5: ExecuteOne - Récupérer un seul utilisateur
+	fmt.Println("\n5. Test récupérer user by ID:")
+	user, err := generated.Users.Select().
+	SelectAll().
+	WhereId(1).
+	ExecuteOne(conn)
+	if err != nil {
+		log.Printf("Erreur lors du GetById: %v", err)
+	} else {
+		fmt.Printf("Utilisateur avec ID n°1 => ID: %d, Name: %s, Email: %s\n", user.Id, user.Name, user.Email)
+	}
 
 	fmt.Println("\n=== Démonstration terminée ===")
 }
