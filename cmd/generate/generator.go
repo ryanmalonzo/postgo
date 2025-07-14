@@ -9,7 +9,7 @@ import (
 )
 
 // generateMainTypes génère le fichier avec les types principaux
-func generateMainTypes(outputDir string, tables map[string]*db.TableBuilder) error {
+func generateMainTypes(outputDir string) error {
 	content := `// Code généré automatiquement - NE PAS MODIFIER
 package generated
 
@@ -46,25 +46,6 @@ type DeleteBuilder interface {
 	return writeFile(filepath.Join(outputDir, "types.go"), content)
 }
 
-// generateIndexFile génère le fichier d'index qui exporte toutes les tables
-func generateIndexFile(outputDir string, tables map[string]*db.TableBuilder) error {
-	var exports []string
-
-	for tableName := range tables {
-		exports = append(exports, fmt.Sprintf(`	%s = %s.Table`, titleCase(tableName), titleCase(tableName)))
-	}
-
-	content := fmt.Sprintf(`// Code généré automatiquement - NE PAS MODIFIER
-package generated
-
-var (
-%s
-)
-`, strings.Join(exports, "\n"))
-
-	return writeFile(filepath.Join(outputDir, "tables.go"), content)
-}
-
 // generateTableFile génère un fichier dédié pour chaque table
 func generateTableFile(outputDir, tableName string, table *db.TableBuilder) error {
 	attributes := table.GetAttributes()
@@ -77,7 +58,7 @@ func generateTableFile(outputDir, tableName string, table *db.TableBuilder) erro
 	updateFields, updateMethods := generateUpdateComponents(attributes, titleName)
 	
 	// Générer les composants pour Select
-	selectMethods := generateSelectComponents(attributes, titleName, tableName)
+	selectMethods := generateSelectComponents(attributes, titleName)
 	
 	// Générer le struct principal
 	mainStruct := generateMainStruct(attributes, titleName, tableName)
@@ -346,7 +327,7 @@ func (b *%sUpdateBuilder) Set%s(value %s) *%sUpdateBuilder {
 }
 
 // generateSelectComponents génère les composants pour le builder de sélection
-func generateSelectComponents(attributes []*db.Attribute, titleName, tableName string) string {
+func generateSelectComponents(attributes []*db.Attribute, titleName string) string {
 	var selectMethods []string
 	
 	// Utiliser le nom singulier pour le struct (ex: User au lieu de Users)
@@ -498,7 +479,7 @@ func (r *%sSelectResult) ExecuteOne(conn *db.Connection) (*%s, error) {
 // Build retourne la requête SQL pour la sélection
 func (r *%sSelectResult) Build() (string, []interface{}) {
 	return r.query.Build(), r.query.GetValues()
-}`, titleName, singularName, singularName, singularName, generateAllColumnsScan(attributes), generateColumnCases(attributes, singularName), titleName, singularName, titleName)
+}`, titleName, singularName, singularName, singularName, generateAllColumnsScan(attributes), generateColumnCases(attributes), titleName, singularName, titleName)
 
 	return strings.Join(selectMethods, "") + strings.Join(whereMethods, "") + executeMethods
 }
@@ -514,7 +495,7 @@ func generateAllColumnsScan(attributes []*db.Attribute) string {
 }
 
 // generateColumnCases génère les cases pour le switch des colonnes
-func generateColumnCases(attributes []*db.Attribute, structName string) string {
+func generateColumnCases(attributes []*db.Attribute) string {
 	var cases []string
 	for _, attr := range attributes {
 		attrName := attr.GetName()

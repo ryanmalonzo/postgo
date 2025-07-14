@@ -29,7 +29,7 @@ func main() {
 	fmt.Printf("Génération du code pour %d table(s)...\n", len(tables))
 
 	// Générer le fichier principal avec les types et constantes
-	err = generateMainTypes(*outputDir, tables)
+	err = generateMainTypes(*outputDir)
 	if err != nil {
 		panic(fmt.Errorf("erreur lors de la génération des types: %v", err))
 	}
